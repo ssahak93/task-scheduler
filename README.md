@@ -4,7 +4,7 @@ A task scheduling tool with user availability tracking, overlap validation, and 
 
 ## Tech Stack
 
-**Backend**: NestJS, TypeORM, MySQL, Redis, Bull, JWT, Socket.IO  
+**Backend**: NestJS, TypeORM, MySQL, MongoDB, Redis, Bull, JWT, Socket.IO, MinIO  
 **Frontend**: Vue.js 3, TypeScript, Pinia, Vite, Socket.IO Client
 
 ## Quick Start
@@ -75,6 +75,17 @@ npm run dev
 - `PATCH /api/notifications/read-all` - Mark all as read
 - **WebSocket**: Real-time notifications via Socket.IO
 
+### Chat
+- `GET /api/chats` - List user chats
+- `GET /api/chats/:id` - Get chat details
+- `GET /api/chats/:id/messages` - Get messages (query params: `limit`, `offset`)
+- `POST /api/chats/direct/:userId` - Create/find direct chat
+- `POST /api/chats/group` - Create group chat
+- `POST /api/chats/:id/messages` - Send message (supports file uploads)
+- `POST /api/chats/:id/read` - Mark messages as read
+- `POST /api/storage/upload` - Upload file to MinIO
+- **WebSocket**: Real-time messaging, typing indicators via Socket.IO (`/chat` namespace)
+
 ### Others
 - `GET /api/users` - List users
 - `GET /api/statuses` - List statuses
@@ -89,3 +100,9 @@ All endpoints except `/api/auth/login` require JWT authentication.
 - Background Processing: Asynchronous notification processing via Bull queue
 - Search & Filter: Search by title/description, filter by status/user
 - Dashboard: List and kanban views
+- Chat System: Real-time messaging with direct and group chats
+  - File uploads (images, documents, audio) via MinIO
+  - Typing indicators
+  - Unread message badges
+  - Message reactions
+  - Read receipts

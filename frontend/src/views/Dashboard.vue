@@ -3,12 +3,28 @@
     <header class="dashboard-header">
       <h1>Task Scheduler Dashboard</h1>
       <div class="header-actions">
+        <button @click="showChat = !showChat" class="chat-btn" :class="{ active: showChat }" title="Chat">
+          💬
+          <span v-if="unreadChatCount > 0" class="chat-badge">{{ unreadChatCount }}</span>
+        </button>
         <NotificationBadge />
         <span class="user-info">{{ authStore.user?.name }}</span>
         <button @click="handleLogout" class="logout-btn">Logout</button>
       </div>
     </header>
-    <div class="dashboard-content">
+    <div class="dashboard-content" :class="{ 'chat-open': showChat }">
+      <div v-if="showChat" class="chat-panel">
+        <button @click="showChat = false" class="chat-close-btn" title="Close Chat">×</button>
+        <ChatList
+          :active-chat-id="activeChatId"
+          @select-chat="handleSelectChat"
+          @new-chat="showNewChatModal = true"
+        />
+        <ChatWindow
+          :active-chat="activeChat"
+          @group-settings="showGroupSettings = true"
+        />
+      </div>
       <div class="filters-section">
         <div class="search-box">
           <input
@@ -90,11 +106,16 @@
       @close="closeConfirmModal"
       @confirm="confirmDelete"
     />
+    <NewChatModal
+      :show="showNewChatModal"
+      @close="showNewChatModal = false"
+      @created="handleChatCreated"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { io, Socket } from 'socket.io-client';
 import { useAuthStore } from '../stores/auth';
@@ -107,11 +128,16 @@ import TaskModal from '../components/TaskModal.vue';
 import NotificationBadge from '../components/NotificationBadge.vue';
 import ErrorModal from '../components/ErrorModal.vue';
 import ConfirmModal from '../components/ConfirmModal.vue';
+import ChatList from '../components/ChatList.vue';
+import ChatWindow from '../components/ChatWindow.vue';
+import NewChatModal from '../components/NewChatModal.vue';
+import { useChatStore } from '../stores/chat';
 import type { Task } from '../stores/tasks';
 
 const router = useRouter();
 const authStore = useAuthStore();
 const tasksStore = useTasksStore();
+const chatStore = useChatStore();
 
 authStore.init();
 
@@ -128,7 +154,20 @@ const errorMessage = ref('');
 const showConfirmModal = ref(false);
 const confirmMessage = ref('');
 const taskToDelete = ref<string | null>(null);
+const showChat = ref(false);
+const showNewChatModal = ref(false);
+const showGroupSettings = ref(false);
+const activeChatId = ref<string | null>(null);
 let tasksSocket: Socket | null = null;
+
+const activeChat = computed(() => {
+  if (!activeChatId.value) return null;
+  return chatStore.chats.find((c: any) => c._id === activeChatId.value) || null;
+});
+
+const unreadChatCount = computed(() => {
+  return Array.from(chatStore.unreadCounts.values()).reduce((sum: number, count: number) => sum + count, 0);
+});
 
 async function loadInitialData() {
   try {
@@ -200,6 +239,17 @@ function connectTasksSocket() {
   });
 }
 
+function handleSelectChat(chatId: string) {
+  activeChatId.value = chatId;
+  chatStore.setActiveChat(chatId);
+}
+
+function handleChatCreated(chatId: string) {
+  activeChatId.value = chatId;
+  chatStore.setActiveChat(chatId);
+  showChat.value = true;
+}
+
 onMounted(async () => {
   if (!authStore.isAuthenticated) {
     router.push('/login');
@@ -207,6 +257,17 @@ onMounted(async () => {
   }
   await loadInitialData();
   connectTasksSocket();
+  chatStore.connectSocket();
+  await chatStore.fetchChats();
+});
+
+watch(() => authStore.isAuthenticated, (isAuth) => {
+  if (isAuth) {
+    chatStore.connectSocket();
+    chatStore.fetchChats();
+  } else {
+    chatStore.disconnectSocket();
+  }
 });
 
 onUnmounted(() => {
@@ -344,6 +405,85 @@ function handleLogout() {
 
 .logout-btn:hover {
   background: #c0392b;
+}
+
+.dashboard-content {
+  position: relative;
+}
+
+.dashboard-content.chat-open {
+  margin-right: 600px;
+}
+
+.chat-panel {
+  position: fixed;
+  top: 80px;
+  right: 0;
+  width: 600px;
+  height: calc(100vh - 80px);
+  background: white;
+  border-left: 1px solid #e0e0e0;
+  display: flex;
+  z-index: 100;
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
+}
+
+.chat-close-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 32px;
+  height: 32px;
+  background: #f0f0f0;
+  border: none;
+  border-radius: 50%;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 101;
+  transition: background 0.2s;
+  color: #666;
+}
+
+.chat-close-btn:hover {
+  background: #e0e0e0;
+  color: #333;
+}
+
+.chat-btn {
+  position: relative;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.chat-btn:hover {
+  background: #f0f0f0;
+}
+
+.chat-btn.active {
+  background: #e8eaf6;
+}
+
+.chat-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: #e74c3c;
+  color: white;
+  border-radius: 10px;
+  padding: 0.125rem 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  min-width: 18px;
+  text-align: center;
 }
 
 .dashboard-content {
