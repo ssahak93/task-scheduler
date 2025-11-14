@@ -5,5 +5,12 @@ export async function fetchUsers() {
   return response.data;
 }
 
+export const usersService = {
+  async getUsers() {
+    const response = await api.get('/users');
+    return response.data;
+  },
+};
+
 
 

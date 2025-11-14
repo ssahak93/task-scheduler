@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { MongooseModule } from '@nestjs/mongoose';
 import { BullModule } from '@nestjs/bull';
 import { AuthModule } from './auth/auth.module';
 import { TasksModule } from './tasks/tasks.module';
@@ -12,6 +13,8 @@ import { TaskStatus } from './entities/task-status.entity';
 import { UserAvailability } from './entities/user-availability.entity';
 import { Notification } from './entities/notification.entity';
 import { NotificationsModule } from './notifications/notifications.module';
+import { ChatModule } from './chat/chat.module';
+import { StorageModule } from './storage/storage.module';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 
@@ -48,11 +51,20 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
         },
       }),
     }),
+    MongooseModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        uri: configService.get<string>('MONGO_URI') || 'mongodb://admin:admin123@localhost:27017/task_scheduler_chat?authSource=admin',
+      }),
+    }),
     AuthModule,
     TasksModule,
     UsersModule,
     StatusesModule,
     NotificationsModule,
+    StorageModule,
+    ChatModule,
   ],
   controllers: [],
   providers: [

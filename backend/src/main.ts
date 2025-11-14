@@ -18,6 +18,7 @@ async function bootstrap() {
       transform: true,
     }),
   );
+  
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost';
   const port = parseInt(process.env.PORT || '3000');
 
